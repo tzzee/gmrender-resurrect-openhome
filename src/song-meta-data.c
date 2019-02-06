@@ -59,7 +59,7 @@ static char *generate_DIDL(const char *id,
 			   const char *album, const char *genre,
 			   const char *composer) {
 	char *result = NULL;
-	asprintf(&result, "%s\n<item id=\"%s\">\n"
+	int ret = asprintf(&result, "%s\n<item id=\"%s\">\n"
 		 "\t<dc:title>%s</dc:title>\n"
 		 "\t<upnp:artist>%s</upnp:artist>\n"
 		 "\t<upnp:album>%s</upnp:album>\n"
@@ -72,7 +72,7 @@ static char *generate_DIDL(const char *id,
 		 album ? album : "", genre ? genre : "",
 		 composer ? composer : "",
 		 kDidlFooter);
-	return result;
+	return ret >= 0 ? result : NULL;
 }
 
 // Takes input, if it finds the given tag, then replaces the content between

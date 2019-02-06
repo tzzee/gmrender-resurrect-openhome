@@ -125,7 +125,11 @@ UPnPVarChangeCollector_new(variable_container_t *variable_container,
 		struct upnp_device *upnp_device,
 		const char *service_id);
 
-// If we know that there is at leats one change upcoming, we MUST
+// Set variable number that should be ignored in eventing.
+void UPnPLastChangeCollector_add_ignore(upnp_var_change_collector_t *object,
+					int variable_num);
+
+// If we know that there are a couple of changes upcoming, we can
 // 'start' a transaction and tell the collector to keep collecting until we
 // 'finish'. This can be nested. 
 void UPnPVarChangeCollector_start(upnp_var_change_collector_t *object);

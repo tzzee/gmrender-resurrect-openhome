@@ -57,8 +57,8 @@
 #define CONTROL_CONTROL_URL "/upnp/control/rendercontrol1"
 #define CONTROL_EVENT_URL "/upnp/event/rendercontrol1"
 
-// Namespace, see UPnP-av-RenderingControl-v3-Service-20101231.pdf page 19 
-#define CONTROL_EVENT_XML_NS "urn:schemas-upnp-org:metadata-1-0/RCS/" 
+// Namespace, see UPnP-av-RenderingControl-v3-Service-20101231.pdf page 19
+#define CONTROL_EVENT_XML_NS "urn:schemas-upnp-org:metadata-1-0/RCS/"
 
 typedef enum {
 	CONTROL_VAR_G_GAIN,
@@ -104,7 +104,7 @@ typedef enum {
 	CONTROL_CMD_GET_VOL,
 	CONTROL_CMD_GET_VOL_DB,
 	CONTROL_CMD_GET_VOL_DBRANGE,
-	CONTROL_CMD_LIST_PRESETS,      
+	CONTROL_CMD_LIST_PRESETS,
 	//CONTROL_CMD_SELECT_PRESET,
 	//CONTROL_CMD_SET_BLUE_BLACK,
 	//CONTROL_CMD_SET_BLUE_GAIN,
@@ -114,7 +114,7 @@ typedef enum {
 	//CONTROL_CMD_SET_GREEN_BLACK,
 	//CONTROL_CMD_SET_GREEN_GAIN,
 	//CONTROL_CMD_SET_HOR_KEYSTONE,
-	//CONTROL_CMD_SET_LOUDNESS,       
+	//CONTROL_CMD_SET_LOUDNESS,
 	CONTROL_CMD_SET_MUTE,
 	//CONTROL_CMD_SET_RED_BLACK,
 	//CONTROL_CMD_SET_RED_GAIN,
@@ -256,7 +256,7 @@ static struct argument *arguments_list_presets[] = {
 // 	& (struct argument) { "PresetName", PARAM_DIR_IN, CONTROL_VAR_AAT_PRESET_NAME },
 // 	NULL
 // };
-static struct argument *arguments_get_brightness[] = {        
+static struct argument *arguments_get_brightness[] = {
 	& (struct argument) { "InstanceID", PARAM_DIR_IN, CONTROL_VAR_AAT_INSTANCE_ID },
 	& (struct argument) { "CurrentBrightness", PARAM_DIR_OUT, CONTROL_VAR_BRIGHTNESS },
 	NULL
@@ -435,8 +435,8 @@ static struct argument *arguments_get_loudness[] = {
 
 static struct argument **argument_list[] = {
 	[CONTROL_CMD_LIST_PRESETS] =        	arguments_list_presets,
-	//[CONTROL_CMD_SELECT_PRESET] =       	arguments_select_preset, 
-	[CONTROL_CMD_GET_BRIGHTNESS] =      	arguments_get_brightness,        
+	//[CONTROL_CMD_SELECT_PRESET] =       	arguments_select_preset,
+	[CONTROL_CMD_GET_BRIGHTNESS] =      	arguments_get_brightness,
 	//[CONTROL_CMD_SET_BRIGHTNESS] =      	arguments_set_brightness,
 	[CONTROL_CMD_GET_CONTRAST] =        	arguments_get_contrast,
 	//[CONTROL_CMD_SET_CONTRAST] =        	arguments_set_contrast,
@@ -766,7 +766,7 @@ void upnp_control_init(struct upnp_device *device) {
 	// Set initial volume.
 	float volume_fraction = 0;
 	if (output_get_volume(&volume_fraction) == 0) {
-		Log_info("control", "Output inital volume is %f; setting "
+		Log_info("control", "Output initial volume is %f; setting "
 			 "control variables accordingly.", volume_fraction);
 		change_volume_decibel(20 * log(volume_fraction) / log(10));
 	}
@@ -776,6 +776,14 @@ void upnp_control_init(struct upnp_device *device) {
 		UPnPVarChangeCollector_new(state_variables_, CONTROL_EVENT_XML_NS,
 				device,
 				CONTROL_SERVICE_ID);
+	// According to UPnP-av-RenderingControl-v3-Service-20101231.pdf, 2.3.1
+	// page 51, the A_ARG_TYPE* variables are not evented.
+	UPnPLastChangeCollector_add_ignore(control_service_.var_change_collector,
+					   CONTROL_VAR_AAT_CHANNEL);
+	UPnPLastChangeCollector_add_ignore(control_service_.var_change_collector,
+					   CONTROL_VAR_AAT_INSTANCE_ID);
+	UPnPLastChangeCollector_add_ignore(control_service_.var_change_collector,
+					   CONTROL_VAR_AAT_PRESET_NAME);
 }
 
 void upnp_control_register_variable_listener(variable_change_listener_t cb,
@@ -786,7 +794,7 @@ void upnp_control_register_variable_listener(variable_change_listener_t cb,
 struct service control_service_ = {
 	.service_id =	CONTROL_SERVICE_ID,
 	.service_type =	CONTROL_TYPE,
-    .scpd_url = CONTROL_SCPD_URL,
+	.scpd_url = CONTROL_SCPD_URL,
 	.control_url = CONTROL_CONTROL_URL,
 	.event_url = CONTROL_EVENT_URL,
 	.event_xml_ns = CONTROL_EVENT_XML_NS, 

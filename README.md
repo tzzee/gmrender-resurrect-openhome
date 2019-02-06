@@ -14,9 +14,13 @@ To distinguish this project from the original one, this is called
 **[gmrender-resurrect](http://github.com/hzeller/gmrender-resurrect)**.
 
 After many features added, this is now a very usable, headless UPnP
-renderer that I would consider **stable**.
+renderer that I would consider **stable**. You don't see many changes in this git - don't worry,
+this project is not abandoned, but it just works as intended (I use it every day).
+If you run into problems, please file bugs, write me directly or send a pull request; I am busy
+but will try to respond.
+
 If you have tested gmrender resurrect with your control point, **please add
-it to the [Compabibility Wiki][compat-wiki] page** (even if there is a problem).
+it to the [Compatibility Wiki][compat-wiki] page** (even if there is a problem).
 At this point, it should work with all media controllers, if not,
 please file a bug so that we can figure out the issue and I can make it work
 for you. See [INSTALL.md](./INSTALL.md) how to create a logfile that helps

@@ -3,6 +3,7 @@
  * Copyright (C) 2005-2007   Ivo Clarysse
  *
  * Adapted to gstreamer-0.10 2006 David Siorpaes
+ * Adapted to output to snapcast 2017 Daniel Jäcksch
  *
  * This file is part of GMediaRender.
  *
@@ -40,6 +41,8 @@
 #include "output_module.h"
 #include "output_gstreamer.h"
 #include "mime_types.h"
+
+static double buffer_duration = 1.0; /* Buffer one second by default. */
 
 static void scan_caps(const GstCaps * caps)
 {
@@ -466,8 +469,20 @@ static gboolean my_bus_callback(GstBus * bus, GstMessage * msg,
 	}
 
 	case GST_MESSAGE_BUFFERING:
-		/* not caring about these right now */
+        {
+                gint percent = 0;
+                gst_message_parse_buffering (msg, &percent);
+
+                /* check if buffering is disabled */
+                if (buffer_duration <= 0) break;
+
+                /* Pause playback until buffering is complete. */
+                if (percent < 100)
+                        gst_element_set_state(player_, GST_STATE_PAUSED);
+                else
+                        gst_element_set_state(player_, GST_STATE_PLAYING);
 		break;
+        }
 	default:
 		/*
 		g_print("GStreamer: %s: unhandled message type %d (%s)\n",
@@ -481,6 +496,7 @@ static gboolean my_bus_callback(GstBus * bus, GstMessage * msg,
 
 static gchar *audio_sink = NULL;
 static gchar *audio_device = NULL;
+static gchar *audio_pipe = NULL;
 static gchar *videosink = NULL;
 static double initial_db = 0.0;
 
@@ -493,12 +509,19 @@ static GOptionEntry option_entries[] = {
         { "gstout-audiodevice", 0, 0, G_OPTION_ARG_STRING, &audio_device,
           "GStreamer device for the given audiosink. ",
 	  NULL },
+        { "gstout-audiopipe", 0, 0, G_OPTION_ARG_STRING, &audio_pipe,
+          "GStreamer audio sink to pipeline"
+          "(gst-launch format) useful for further output format conversion.",
+	  NULL },
         { "gstout-videosink", 0, 0, G_OPTION_ARG_STRING, &videosink,
           "GStreamer video sink to use "
 	  "(autovideosink, xvimagesink, ximagesink, ...)",
 	  NULL },
+        { "gstout-buffer-duration", 0, 0, G_OPTION_ARG_DOUBLE, &buffer_duration,
+          "The size of the buffer in seconds. Set to zero to disable buffering.",
+          NULL },
         { "gstout-initial-volume-db", 0, 0, G_OPTION_ARG_DOUBLE, &initial_db,
-          "GStreamer inital volume in decibel (e.g. 0.0 = max; -6 = 1/2 max) ",
+          "GStreamer initial volume in decibel (e.g. 0.0 = max; -6 = 1/2 max) ",
 	  NULL },
         { NULL }
 };
@@ -605,9 +628,28 @@ static int output_gstreamer_init(void)
 	player_ = gst_element_factory_make(player_element_name, "play");
 	assert(player_ != NULL);
 
+        /* set buffer size */
+        if (buffer_duration > 0) {
+                gint64 buffer_duration_ns = round(buffer_duration * 1.0e9);
+                Log_info("gstreamer",
+                         "Setting buffer duration to %ldms",
+                         buffer_duration_ns / 1000000);
+                g_object_set(G_OBJECT(player_),
+                             "buffer-duration",
+                             buffer_duration_ns,
+                             NULL);
+        } else {
+                Log_info("gstreamer", "Buffering disabled");
+        }
+
 	bus = gst_pipeline_get_bus(GST_PIPELINE(player_));
 	gst_bus_add_watch(bus, my_bus_callback, NULL);
 	gst_object_unref(bus);
+
+	if (audio_sink != NULL && audio_pipe != NULL) {
+		Log_error("gstreamer", "--gstout-audosink and --gstout-audiopipe are mutually exclusive.");
+		return 1;
+	}
 
 	if (audio_sink != NULL) {
 		GstElement *sink = NULL;
@@ -622,6 +664,17 @@ static int output_gstreamer_init(void)
 		    g_object_set (G_OBJECT(sink), "device", audio_device, NULL);
 		  }
 		  g_object_set (G_OBJECT (player_), "audio-sink", sink, NULL);
+		}
+	}
+	if (audio_pipe != NULL) {
+		GstElement *sink = NULL;
+		Log_info("gstreamer", "Setting audio sink-pipeline to %s\n",audio_pipe);
+		sink = gst_parse_bin_from_description(audio_pipe, TRUE, NULL);
+
+		if (sink == NULL) {
+			Log_error("gstreamer", "Could not create pipeline.");
+		} else {
+			g_object_set (G_OBJECT (player_), "audio-sink", sink, NULL);
 		}
 	}
 	if (videosink != NULL) {

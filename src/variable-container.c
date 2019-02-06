@@ -235,6 +235,7 @@ struct upnp_var_change_collector {
 	variable_container_t *variable_container;
 	int last_change_variable_num;      // the variable we manipulate.
 	uint32_t changed_variables;  // bit mask for variables changed in current transaction
+	uint32_t not_eventable_variables;  // variables not to event on.
 	struct upnp_device *upnp_device;
 	const char *service_id;
 	int open_transactions;
@@ -258,6 +259,7 @@ UPnPVarChangeCollector_new(variable_container_t *variable_container,
 	result->variable_container = variable_container;
 	result->last_change_variable_num = -1;
 	result->changed_variables = 0;
+	//result->not_eventable_variables = 0;
 	result->upnp_device = upnp_device;
 	result->service_id = service_id;
 	result->open_transactions = 0;
@@ -290,11 +292,18 @@ UPnPVarChangeCollector_new(variable_container_t *variable_container,
 	collectors = result;
 
 	UPnPVarChangeCollector_notify(result);
-
+	// The state change variable itself is not eventable.
+	UPnPLastChangeCollector_add_ignore(result,
+					   result->last_change_variable_num);
 	VariableContainer_register_callback(variable_container,
 					    UPnPVarChangeCollector_callback,
 					    result);
 	return result;
+}
+
+void UPnPLastChangeCollector_add_ignore(upnp_var_change_collector_t *object,
+					int variable_num) {
+	object->not_eventable_variables |= (1 << variable_num);
 }
 
 void UPnPVarChangeCollector_start(upnp_var_change_collector_t *object) {
@@ -454,6 +463,9 @@ static void UPnPVarChangeCollector_callback(void *userdata,
 	upnp_var_change_collector_t *object = 
 		(upnp_var_change_collector_t*) userdata;
 
+	if (object->not_eventable_variables & (1 << var_num)) {
+		return;  // ignore changes on non-eventable variables.
+	}
 	if (var_num == object->last_change_variable_num) {
 		return;
 	}

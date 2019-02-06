@@ -719,6 +719,10 @@ static int divide_leave_remainder(gint64 *val, gint64 divisor) {
 	return result;
 }
 static void print_upnp_time(char *result, size_t size, gint64 t) {
+	//const gint64 one_sec = 1000000000LL;  // units are in nanoseconds.
+	//const int hour = divide_leave_remainder(&t, 3600LL * one_sec);
+	//const int minute = divide_leave_remainder(&t, 60LL * one_sec);
+	//const int second = divide_leave_remainder(&t, one_sec);
 	const int hour = divide_leave_remainder(&t, 3600);
 	const int minute = divide_leave_remainder(&t, 60);
 	const int second = divide_leave_remainder(&t, 1);
@@ -735,7 +739,6 @@ static gint64 parse_upnp_time(const char *time_string) {
 	return one_sec_unit * seconds;
 }
 
-
 static void shared_meta_time_change(uint32_t total, uint32_t current)
 {
 	char tbuf[32];
@@ -746,7 +749,6 @@ static void shared_meta_time_change(uint32_t total, uint32_t current)
 	replace_var(TRANSPORT_VAR_REL_TIME_POS, tbuf);
 	service_unlock();
 }
-
 
 static int get_position_info(struct action_event *event)
 {
@@ -800,7 +802,7 @@ static int stop(struct action_event *event)
 	case TRANSPORT_NO_MEDIA_PRESENT:
 		/* action not allowed in these states - error 701 */
 		upnp_set_error(event, UPNP_TRANSPORT_E_TRANSITION_NA,
-			       "Transition not allowed; allowed=%s",
+			       "Transition to STOP not allowed; allowed=%s",
 			       get_var(TRANSPORT_VAR_CUR_TRANSPORT_ACTIONS));
 
 		break;
@@ -846,6 +848,9 @@ static int play(struct action_event *event)
 	// when changing tracks and playback is already in progress -
 	// it will just set new URI, and send Play command
 	case TRANSPORT_PLAYING:
+		// Nothing to change.
+		break;
+
 	case TRANSPORT_STOPPED:
 		// If we were stopped before, we start a new song now. So just
 		// set the time to zero now; otherwise we will see the old
@@ -873,7 +878,7 @@ static int play(struct action_event *event)
 	case TRANSPORT_RECORDING:
 		/* action not allowed in these states - error 701 */
 		upnp_set_error(event, UPNP_TRANSPORT_E_TRANSITION_NA,
-			       "Transition not allowed; allowed=%s",
+			       "Transition to PLAY not allowed; allowed=%s",
 			       get_var(TRANSPORT_VAR_CUR_TRANSPORT_ACTIONS));
 		rc = -1;
 		break;
@@ -908,7 +913,7 @@ static int pause_stream(struct action_event *event)
         default:
 		/* action not allowed in these states - error 701 */
 		upnp_set_error(event, UPNP_TRANSPORT_E_TRANSITION_NA,
-			       "Transition not allowed; allowed=%s",
+			       "Transition to PAUSE not allowed; allowed=%s",
 			       get_var(TRANSPORT_VAR_CUR_TRANSPORT_ACTIONS));
 		rc = -1;
         }
@@ -986,6 +991,16 @@ void upnp_transport_init(struct upnp_device *device) {
 	if (sm != NULL) {
 		shared_meta_time_add_listener(sm, shared_meta_time_change);
 	}
+	// Times and counters should not be evented. We only change REL_TIME
+	// right now anyway (AVTransport-v1 document, 2.3.1 Event Model)
+	UPnPLastChangeCollector_add_ignore(transport_service_.var_change_collector,
+					   TRANSPORT_VAR_REL_TIME_POS);
+	UPnPLastChangeCollector_add_ignore(transport_service_.var_change_collector,
+					   TRANSPORT_VAR_ABS_TIME_POS);
+	UPnPLastChangeCollector_add_ignore(transport_service_.var_change_collector,
+					   TRANSPORT_VAR_REL_CTR_POS);
+	UPnPLastChangeCollector_add_ignore(transport_service_.var_change_collector,
+					   TRANSPORT_VAR_ABS_CTR_POS);
 
 }
 
