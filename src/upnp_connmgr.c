@@ -249,25 +249,7 @@ void register_mime_type(const char *mime_type) {
 	}
 }
 
-static int filter_mime_type(const char* filterList, const char* mime_type) {
-	// Make a modifiable copy of the mime type
-	char* type = malloc(strlen(mime_type) + 1);
-	if (type == NULL)
-		return 0;
-
-	strcpy(type, mime_type);
-
-	// Fetch the base type
-	char* base = strtok(type, "/");
-
-	// Check for base type in filter
-	int result = (strstr(filterList, base) == NULL);
-
-	free(type);
-	return result;
-}
-
-int connmgr_init(const char* filter) {
+int connmgr_init(void) {
 	struct mime_type *entry;
 	char *buf = NULL;
 	char *p;
@@ -286,11 +268,6 @@ int connmgr_init(const char* filter) {
 	}
 
 	for (entry = supported_types; entry; entry = entry->next) {
-		
-		// Filter mime types
-		if (filter != NULL && filter_mime_type(filter, entry->mime_type))
-			continue;
-
 		bufsize += strlen(entry->mime_type) + 1 + 8 + 3 + 2;
 		offset = p - buf;
 		buf = realloc(buf, bufsize);
